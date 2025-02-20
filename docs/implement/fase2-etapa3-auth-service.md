@@ -19,215 +19,162 @@ Utilize os exemplos em `docs/exemplos/` como base:
 
 ## Checklist
 
-### 1. Configuração Inicial
-- [ ] Instalar dependências:
+### 1. Configuração Inicial ✅
+- [x] Instalar dependências:
 ```bash
 pnpm add @nestjs/jwt @nestjs/passport passport passport-jwt passport-local bcrypt
 pnpm add -D @types/passport-jwt @types/passport-local @types/bcrypt
+pnpm add class-validator class-transformer
+pnpm add @nestjs/throttler uuid
 ```
 
-### 2. Entidades e DTOs
-- [ ] Criar core/src/auth-service/entities/user.entity.ts
-  - Usar como base o exemplo em `docs/exemplos/user.entity.ts`
-  - Adaptar campos conforme necessidade
+### 2. Entidades e DTOs ✅
+- [x] Criar core/src/auth-service/entities/user.entity.ts
+- [x] Criar core/src/auth-service/entities/refresh-token.entity.ts
+- [x] Criar core/src/auth-service/entities/audit-log.entity.ts
+- [x] Criar core/src/auth-service/dto/auth.dto.ts
 
-### 3. Guards e Decorators
-- [ ] Criar core/src/auth-service/guards/jwt-auth.guard.ts
-  - Usar como base o exemplo em `docs/exemplos/auth.guard.ts`
-  - Adaptar para JWT específico
+### 3. Guards e Decorators ✅
+- [x] Criar core/src/auth-service/guards/jwt-auth.guard.ts
+- [x] Criar core/src/auth-service/guards/super-admin.guard.ts
+- [x] Criar core/src/auth-service/guards/local-auth.guard.ts
 
-- [ ] Criar core/src/auth-service/guards/super-admin.guard.ts
-  - Usar como base o exemplo em `docs/exemplos/super-admin.guard.ts`
-  - Adaptar validações conforme necessidade
+### 4. Estratégias de Autenticação ✅
+- [x] Criar core/src/auth-service/strategies/jwt.strategy.ts
+- [x] Criar core/src/auth-service/strategies/local.strategy.ts
 
-### 4. Estratégias de Autenticação
-- [ ] Criar core/src/auth-service/strategies/jwt.strategy.ts:
-```typescript
-import { Injectable } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
-import { TokenPayloadDto } from '../dto/auth.dto';
+### 5. Serviços ✅
+- [x] Criar core/src/auth-service/auth.service.ts
+- [x] Criar core/src/auth-service/services/audit-log.service.ts
 
-@Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(configService: ConfigService) {
-    super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
-      secretOrKey: configService.get('JWT_SECRET'),
-    });
-  }
+### 6. Controlador ✅
+- [x] Criar core/src/auth-service/auth.controller.ts com endpoints:
+  - [x] POST /auth/login
+  - [x] POST /auth/register
+  - [x] POST /auth/refresh
+  - [x] POST /auth/logout
+  - [x] GET /auth/profile
 
-  async validate(payload: TokenPayloadDto) {
-    return payload;
-  }
-}
-```
+### 7. Módulo ✅
+- [x] Criar core/src/auth-service/auth.module.ts
+- [x] Configurar imports
+- [x] Configurar providers
+- [x] Configurar exports
 
-- [ ] Criar core/src/auth-service/strategies/local.strategy.ts:
-```typescript
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { Strategy } from 'passport-local';
-import { AuthService } from '../auth.service';
+### 8. Recursos de Segurança ✅
+- [x] Rate Limiting
+  - [x] Limite global de 10 requisições por minuto
+  - [x] Bloqueio após 5 tentativas falhas de login em 15 minutos
+- [x] Refresh Token
+  - [x] Geração e validação
+  - [x] Expiração configurável
+  - [x] Revogação de tokens
+- [x] Logs de Auditoria
+  - [x] Registro de tentativas de login/registro
+  - [x] Tracking de IP e User Agent
+  - [x] Status e detalhes das operações
 
-@Injectable()
-export class LocalStrategy extends PassportStrategy(Strategy) {
-  constructor(private authService: AuthService) {
-    super({ usernameField: 'email' });
-  }
-
-  async validate(email: string, password: string) {
-    const user = await this.authService.validateUser(email, password);
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-    return user;
-  }
-}
-```
-
-### 5. Serviço de Autenticação
-- [ ] Criar core/src/auth-service/auth.service.ts:
-```typescript
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { UserEntity } from './entities/user.entity';
-import { LoginDto, RegisterDto, TokenPayloadDto } from './dto/auth.dto';
-import * as bcrypt from 'bcrypt';
-
-@Injectable()
-export class AuthService {
-  constructor(
-    @InjectRepository(UserEntity)
-    private userRepository: Repository<UserEntity>,
-    private jwtService: JwtService,
-  ) {}
-
-  async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.userRepository.findOne({ where: { email } });
-    if (user && await bcrypt.compare(password, user.password)) {
-      const { password, ...result } = user;
-      return result;
-    }
-    return null;
-  }
-
-  async login(loginDto: LoginDto) {
-    const user = await this.validateUser(loginDto.email, loginDto.password);
-    if (!user) {
-      throw new UnauthorizedException();
-    }
-
-    // Verificar se é superAdmin ou tem acesso ao tenant
-    if (!user.isSuperAdmin && loginDto.tenantId && user.tenantId !== loginDto.tenantId) {
-      throw new ForbiddenException('Access to this tenant is not allowed');
-    }
-
-    const payload: TokenPayloadDto = {
-      sub: user.id,
-      email: user.email,
-      tenantId: loginDto.tenantId || user.tenantId,
-      roles: user.roles,
-      isSuperAdmin: user.isSuperAdmin,
-    };
-
-    return {
-      access_token: this.jwtService.sign(payload),
-    };
-  }
-
-  async register(registerDto: RegisterDto) {
-    // Apenas superAdmin pode criar outros superAdmins
-    if (registerDto.isSuperAdmin) {
-      const requestUser = await this.getCurrentUser(); // Implementar método para pegar usuário atual
-      if (!requestUser?.isSuperAdmin) {
-        throw new ForbiddenException('Only superAdmin can create other superAdmins');
-      }
-    }
-
-    const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-    const user = this.userRepository.create({
-      ...registerDto,
-      password: hashedPassword,
-    });
-    await this.userRepository.save(user);
-    const { password, ...result } = user;
-    return result;
-  }
-
-  async getCurrentUser() {
-    // Implementar lógica para pegar usuário do contexto da requisição
-  }
-}
-```
-
-### 6. Controlador de Autenticação
-- [ ] Criar core/src/auth-service/auth.controller.ts:
-```typescript
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { LocalAuthGuard } from './guards/local-auth.guard';
-import { LoginDto, RegisterDto } from './dto/auth.dto';
-
-@Controller('auth')
-export class AuthController {
-  constructor(private authService: AuthService) {}
-
-  @UseGuards(LocalAuthGuard)
-  @Post('login')
-  async login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
-  }
-
-  @Post('register')
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
-  }
-}
-```
-
-### 7. Módulo de Autenticação
-- [ ] Criar core/src/auth-service/auth.module.ts:
-```typescript
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
-import { AuthService } from './auth.service';
-import { AuthController } from './auth.controller';
-import { UserEntity } from './entities/user.entity';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { LocalStrategy } from './strategies/local.strategy';
-
-@Module({
-  imports: [
-    TypeOrmModule.forFeature([UserEntity]),
-    PassportModule,
-    JwtModule.registerAsync({
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get('JWT_SECRET'),
-        signOptions: { expiresIn: '1h' },
-      }),
-      inject: [ConfigService],
-    }),
-  ],
-  providers: [AuthService, JwtStrategy, LocalStrategy],
-  controllers: [AuthController],
-  exports: [AuthService],
-})
-export class AuthModule {}
-```
-
-### 8. Configuração de Variáveis de Ambiente
-- [ ] Adicionar ao .env:
+### 9. Configuração de Ambiente ✅
+- [x] Adicionar variáveis ao .env:
 ```env
-JWT_SECRET=your-super-secret-key
-JWT_EXPIRATION=3600
+JWT_SECRET=your-super-secret-key-change-in-production
+JWT_EXPIRATION=1h
+```
+
+### 10. Próximos Passos
+- [ ] Criar migrations para as tabelas:
+  - [ ] users
+  - [ ] refresh_tokens
+  - [ ] audit_logs
+- [ ] Implementar testes unitários
+- [ ] Implementar testes de integração
+- [ ] Documentar API com Swagger
+
+## Endpoints Disponíveis
+
+### POST /auth/login
+```typescript
+// Request
+{
+  "email": "string",
+  "password": "string",
+  "tenantId": "string" // opcional
+}
+
+// Response
+{
+  "access_token": "string",
+  "refresh_token": "string",
+  "user": {
+    "id": "string",
+    "email": "string",
+    "tenantId": "string",
+    "roles": "string[]",
+    "isSuperAdmin": "boolean"
+  }
+}
+```
+
+### POST /auth/register (requer superAdmin)
+```typescript
+// Request
+{
+  "email": "string",
+  "password": "string",
+  "tenantId": "string", // opcional
+  "roles": "string[]", // opcional
+  "isSuperAdmin": "boolean" // opcional
+}
+
+// Response
+{
+  "id": "string",
+  "email": "string",
+  "tenantId": "string",
+  "roles": "string[]",
+  "isSuperAdmin": "boolean"
+}
+```
+
+### POST /auth/refresh
+```typescript
+// Request
+{
+  "refreshToken": "string"
+}
+
+// Response
+{
+  "access_token": "string",
+  "refresh_token": "string",
+  "user": {
+    "id": "string",
+    "email": "string",
+    "tenantId": "string",
+    "roles": "string[]",
+    "isSuperAdmin": "boolean"
+  }
+}
+```
+
+### POST /auth/logout (requer autenticação)
+```typescript
+// Response
+{
+  "message": "Logged out successfully"
+}
+```
+
+### GET /auth/profile (requer autenticação)
+```typescript
+// Response
+{
+  "sub": "string",
+  "email": "string",
+  "tenantId": "string",
+  "roles": "string[]",
+  "isSuperAdmin": "boolean"
+}
 ```
 
 ## Prompt para Agente
@@ -273,4 +220,5 @@ curl -X POST http://localhost:3000/auth/login \
 # Teste de rota protegida
 curl -X GET http://localhost:3000/protected \
   -H "Authorization: Bearer {token}"
+``` 
 ``` 

@@ -2,11 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { QueueModule } from '../../src/infrastructure/queue/queue.module';
 import { ConfigModule } from '../../src/infrastructure/config/config.module';
-import { ClientProxy } from '@nestjs/microservices';
+import { QueueService } from '../../src/infrastructure/queue/queue.service';
+import { firstValueFrom } from 'rxjs';
 
 describe('QueueModule (e2e)', () => {
   let app: INestApplication;
-  let queueClient: ClientProxy;
+  let queueService: QueueService;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -14,13 +15,13 @@ describe('QueueModule (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    queueClient = app.get('QUEUE_SERVICE');
+    queueService = app.get<QueueService>(QueueService);
     await app.init();
-    await queueClient.connect();
+    await queueService.connect();
   });
 
   afterEach(async () => {
-    await queueClient.close();
+    await queueService.close();
     await app.close();
   });
 
@@ -29,7 +30,7 @@ describe('QueueModule (e2e)', () => {
     const pattern = 'test-pattern';
 
     // Subscribe to receive messages
-    queueClient
+    queueService
       .send(pattern, testMessage)
       .subscribe((data: typeof testMessage) => {
         expect(data).toEqual(testMessage);
@@ -37,7 +38,7 @@ describe('QueueModule (e2e)', () => {
       });
 
     // Emit test message
-    queueClient.emit(pattern, testMessage);
+    queueService.emit(pattern, testMessage);
   });
 
   it('should handle message pattern with response', async () => {
@@ -46,7 +47,7 @@ describe('QueueModule (e2e)', () => {
     const expectedResponse = { response: 'test-response' };
 
     // Setup message handler
-    queueClient
+    queueService
       .send(pattern, testMessage)
       .subscribe((data: typeof testMessage) => {
         expect(data).toEqual(testMessage);
@@ -54,7 +55,9 @@ describe('QueueModule (e2e)', () => {
       });
 
     // Send message and wait for response
-    const response = await queueClient.send(pattern, testMessage).toPromise();
+    const response = await firstValueFrom(
+      queueService.send(pattern, testMessage),
+    );
 
     expect(response).toEqual(expectedResponse);
   });
@@ -67,7 +70,7 @@ describe('QueueModule (e2e)', () => {
     let received = 0;
 
     // Subscribe to tenant-specific patterns
-    queueClient
+    queueService
       .send(tenant1Pattern, message1)
       .subscribe((data: typeof message1) => {
         expect(data).toEqual(message1);
@@ -75,7 +78,7 @@ describe('QueueModule (e2e)', () => {
         if (received === 2) done();
       });
 
-    queueClient
+    queueService
       .send(tenant2Pattern, message2)
       .subscribe((data: typeof message2) => {
         expect(data).toEqual(message2);
@@ -84,7 +87,7 @@ describe('QueueModule (e2e)', () => {
       });
 
     // Emit tenant-specific messages
-    queueClient.emit(tenant1Pattern, message1);
-    queueClient.emit(tenant2Pattern, message2);
+    queueService.emit(tenant1Pattern, message1);
+    queueService.emit(tenant2Pattern, message2);
   });
 });

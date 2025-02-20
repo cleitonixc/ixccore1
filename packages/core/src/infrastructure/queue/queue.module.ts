@@ -1,12 +1,15 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
+import { QueueService } from './queue.service';
+
+const QUEUE_SERVICE_TOKEN = 'QUEUE_SERVICE';
 
 @Module({
   imports: [
     ClientsModule.registerAsync([
       {
-        name: 'QUEUE_SERVICE',
+        name: QUEUE_SERVICE_TOKEN,
         useFactory: (configService: ConfigService) => {
           const url = configService.getOrThrow<string>('RABBITMQ_URL');
           return {
@@ -24,6 +27,7 @@ import { ConfigService } from '@nestjs/config';
       },
     ]),
   ],
-  exports: ['QUEUE_SERVICE'],
+  providers: [QueueService],
+  exports: [QueueService],
 })
 export class QueueModule {}

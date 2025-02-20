@@ -9,7 +9,7 @@
   "moduleNameMapper": {
     "^@app/(.*)$": "<rootDir>/../src/$1"
   },
-  "setupFiles": ["<rootDir>/jest.setup.ts"],
+  "setupFiles": ["<rootDir>/setup.ts"],
   "coverageDirectory": "../coverage-e2e",
   "coverageReporters": ["text", "lcov", "json-summary"],
   "collectCoverageFrom": [

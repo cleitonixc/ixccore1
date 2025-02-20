@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { LoggerService } from './infrastructure/logging/logger.service';
 import { LoggingInterceptor } from './infrastructure/interceptors/logging.interceptor';
@@ -6,7 +7,8 @@ import { LoggingInterceptor } from './infrastructure/interceptors/logging.interc
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const logger = new LoggerService(app.get('ConfigService'));
+  const configService = app.get(ConfigService);
+  const logger = new LoggerService(configService);
   app.useLogger(logger);
   app.useGlobalInterceptors(new LoggingInterceptor(logger));
 
@@ -14,7 +16,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.enableCors();
 
-  const port = 7001;
+  const port = configService.get('PORT') || 7001;
   // Iniciar servidor
   await app.listen(port);
   logger.log(`Core module running on: http://localhost:${port}/api`);
