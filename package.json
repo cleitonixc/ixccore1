@@ -1,0 +1,44 @@
+{
+  "name": "ixccore",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "dev": "pnpm -r dev",
+    "format": "prettier --write \"**/*.{ts,js,json}\"",
+    "lint": "eslint \"**/*.ts\" --fix"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "@nestjs/cache-manager": "^3.0.0",
+    "@nestjs/config": "^4.0.0",
+    "@nestjs/microservices": "^11.0.10",
+    "@nestjs/typeorm": "^11.0.0",
+    "@opentelemetry/exporter-jaeger": "^1.30.1",
+    "@opentelemetry/instrumentation-nestjs-core": "^0.44.1",
+    "@opentelemetry/sdk-node": "^0.57.2",
+    "@types/dotenv": "^8.2.3",
+    "@willsoto/nestjs-prometheus": "^6.0.2",
+    "amqp-connection-manager": "^4.1.14",
+    "amqplib": "^0.10.5",
+    "cache-manager": "^6.4.0",
+    "cache-manager-redis-store": "^3.0.1",
+    "dotenv": "^16.4.7",
+    "ioredis": "^5.5.0",
+    "pg": "^8.13.3",
+    "typeorm": "^0.3.20"
+  }
+}
