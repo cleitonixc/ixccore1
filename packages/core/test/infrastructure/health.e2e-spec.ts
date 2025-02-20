@@ -9,10 +9,7 @@ describe('HealthController (e2e)', () => {
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [
-        ConfigModule,
-        HealthModule,
-      ],
+      imports: [ConfigModule, HealthModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
@@ -53,4 +50,4 @@ describe('HealthController (e2e)', () => {
         expect(res.body.status).toBe('ok');
       });
   });
-}); 
+});

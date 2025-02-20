@@ -29,10 +29,12 @@ describe('QueueModule (e2e)', () => {
     const pattern = 'test-pattern';
 
     // Subscribe to receive messages
-    queueClient.subscribe(pattern, (data) => {
-      expect(data).toEqual(testMessage);
-      done();
-    });
+    queueClient
+      .send(pattern, testMessage)
+      .subscribe((data: typeof testMessage) => {
+        expect(data).toEqual(testMessage);
+        done();
+      });
 
     // Emit test message
     queueClient.emit(pattern, testMessage);
@@ -44,15 +46,15 @@ describe('QueueModule (e2e)', () => {
     const expectedResponse = { response: 'test-response' };
 
     // Setup message handler
-    queueClient.subscribe(pattern, (data) => {
-      expect(data).toEqual(testMessage);
-      return expectedResponse;
-    });
+    queueClient
+      .send(pattern, testMessage)
+      .subscribe((data: typeof testMessage) => {
+        expect(data).toEqual(testMessage);
+        return expectedResponse;
+      });
 
     // Send message and wait for response
-    const response = await queueClient
-      .send(pattern, testMessage)
-      .toPromise();
+    const response = await queueClient.send(pattern, testMessage).toPromise();
 
     expect(response).toEqual(expectedResponse);
   });
@@ -65,20 +67,24 @@ describe('QueueModule (e2e)', () => {
     let received = 0;
 
     // Subscribe to tenant-specific patterns
-    queueClient.subscribe(tenant1Pattern, (data) => {
-      expect(data).toEqual(message1);
-      received++;
-      if (received === 2) done();
-    });
+    queueClient
+      .send(tenant1Pattern, message1)
+      .subscribe((data: typeof message1) => {
+        expect(data).toEqual(message1);
+        received++;
+        if (received === 2) done();
+      });
 
-    queueClient.subscribe(tenant2Pattern, (data) => {
-      expect(data).toEqual(message2);
-      received++;
-      if (received === 2) done();
-    });
+    queueClient
+      .send(tenant2Pattern, message2)
+      .subscribe((data: typeof message2) => {
+        expect(data).toEqual(message2);
+        received++;
+        if (received === 2) done();
+      });
 
     // Emit tenant-specific messages
     queueClient.emit(tenant1Pattern, message1);
     queueClient.emit(tenant2Pattern, message2);
   });
-}); 
+});

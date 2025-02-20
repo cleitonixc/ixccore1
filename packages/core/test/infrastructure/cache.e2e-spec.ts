@@ -20,7 +20,6 @@ describe('CacheModule (e2e)', () => {
   });
 
   afterEach(async () => {
-    await cacheManager.reset();
     await app.close();
   });
 
@@ -60,8 +59,8 @@ describe('CacheModule (e2e)', () => {
     expect(immediateResult).toEqual(value);
 
     // Wait for TTL to expire
-    await new Promise(resolve => setTimeout(resolve, ttl + 100));
+    await new Promise((resolve) => setTimeout(resolve, ttl + 100));
     const expiredResult = await cacheManager.get(key);
     expect(expiredResult).toBeUndefined();
   });
-}); 
+});
